@@ -7,3 +7,4 @@ Home
 ## Navigator
 
 - [Requirements Analysis](./docs/eng/REQUIREMENTS_ANALYSIS.md)
+- [Database Structure](./docs/eng/BASE_STRUCTURE.md)
