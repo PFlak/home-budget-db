@@ -37,3 +37,8 @@ UPDATE "home budget application".users SET email='NEW email' WHERE nick_name='Te
 SELECT update_time, email FROM "home budget application".users WHERE nick_name='Tester#2';
 
 COMMIT;
+
+-- Test add_currency function
+BEGIN;
+SELECT * FROM "home budget application".add_currency('Zloty', 'PLN', 0.2493);
+COMMIT;

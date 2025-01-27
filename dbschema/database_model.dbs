@@ -11,7 +11,7 @@
 		<udt name="user_role_in_group" udt_java_type="2002" udt_precision="NONE" >
 			<udt_script><![CDATA[CREATE TYPE ${name} AS ENUM ( 'guest', 'admin'  )]]></udt_script>
 		</udt>
-		<table name="categories" prior="tbl" generator_rows="100" generator_order="2" >
+		<table name="categories" prior="tbl" generator_rows="0" generator_order="2" >
 			<column name="category_id" prior="category_name" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
 			</column>
@@ -21,12 +21,13 @@
 				<column name="category_id" />
 			</index>
 		</table>
-		<table name="countries" prior="tbl" generator_rows="150" generator_order="1" >
+		<table name="countries" prior="tbl" generator_rows="0" generator_order="1" >
 			<column name="country_id" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
 			</column>
-			<column name="country_name" type="varchar" length="200" jt="12" mandatory="y" />
-			<column name="country_code" type="char" length="5" jt="1" >
+			<column name="country_name" type="varchar" length="200" jt="12" regexp="list:file=Country.txt" />
+			<column name="country_code" type="char" length="5" jt="1" mandatory="y" >
+				<column_options><![CDATA[UNIQUE]]></column_options>
 				<comment><![CDATA[Short name of country]]></comment>
 			</column>
 			<column name="currency_id" type="integer" jt="4" mandatory="y" />
@@ -37,12 +38,13 @@
 				<fk_column name="currency_id" pk="currency_id" />
 			</fk>
 		</table>
-		<table name="currency" prior="tbl" generator_rows="100" generator_order="0" >
+		<table name="currency" prior="tbl" generator_rows="0" generator_order="0" >
 			<column name="currency_id" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
 			</column>
 			<column name="currency_name" type="varchar" length="100" jt="12" regexp="Australian dollar|Swiss franc|Euro|Pound sterling|Yen|US dollar" />
 			<column name="currency_short" type="char" length="3" jt="1" mandatory="y" regexp="list:file=Currency.txt" >
+				<column_options><![CDATA[UNIQUE]]></column_options>
 				<comment><![CDATA[Short name of currenty, for example USD for Dollar]]></comment>
 			</column>
 			<column name="dollar_rate" prior="dollar_course" type="numeric" length="100" decimal="4" jt="2" mandatory="y" >
@@ -52,7 +54,7 @@
 				<column name="currency_id" />
 			</index>
 		</table>
-		<table name="groups" prior="tbl" generator_rows="100" generator_order="10" >
+		<table name="groups" prior="tbl" generator_rows="0" generator_order="10" >
 			<column name="group_id" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
 			</column>
@@ -77,7 +79,7 @@
 				<fk_column name="owner_id" pk="user_id" />
 			</fk>
 		</table>
-		<table name="sessions" prior="tbl" generator_rows="100" generator_order="5" >
+		<table name="sessions" prior="tbl" generator_rows="0" generator_order="5" >
 			<column name="session_id" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
 			</column>
@@ -95,7 +97,7 @@
 				<column name="session_id" />
 			</index>
 		</table>
-		<table name="subcategories" prior="tbl" generator_rows="150" generator_order="3" >
+		<table name="subcategories" prior="tbl" generator_rows="0" generator_order="3" >
 			<column name="subcategory_id" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
 			</column>
@@ -112,7 +114,7 @@
 				<fk_column name="category_id" pk="category_id" />
 			</fk>
 		</table>
-		<table name="transactions" prior="tbl" generator_rows="225" generator_order="9" >
+		<table name="transactions" prior="tbl" generator_rows="0" generator_order="9" >
 			<column name="transaction_id" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
 			</column>
@@ -142,7 +144,7 @@
 				<fk_column name="category_id" pk="category_id" />
 			</fk>
 		</table>
-		<table name="users" prior="tbl" generator_rows="100" generator_order="4" spec="" >
+		<table name="users" prior="tbl" generator_rows="0" generator_order="4" spec="" >
 			<comment><![CDATA[Users of the application]]></comment>
 			<column name="user_id" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
@@ -172,7 +174,7 @@
 				<fk_column name="country_id" pk="country_id" />
 			</fk>
 		</table>
-		<table name="users_groups" prior="users_group" generator_rows="150" generator_order="11" >
+		<table name="users_groups" prior="users_group" generator_rows="0" generator_order="11" >
 			<column name="user_role" prior="is_admin" type="home" jt="12" mandatory="y" regexp="(admin|guest)" >
 				<defo><![CDATA['guest'::"home budget application".user_role_in_group]]></defo>
 				<comment><![CDATA[Enum type with values:
@@ -194,7 +196,7 @@
 				<fk_column name="user_id" pk="user_id" />
 			</fk>
 		</table>
-		<table name="users_groups_transactions" prior="users_groups_" generator_rows="337" generator_order="12" >
+		<table name="users_groups_transactions" prior="users_groups_" generator_rows="0" generator_order="12" >
 			<column name="transaction_time" type="timestamp" jt="93" mandatory="y" >
 				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
 			</column>
@@ -224,7 +226,7 @@
 				<fk_column name="wallet_id" pk="wallet_id" />
 			</fk>
 		</table>
-		<table name="users_sessions" prior="tbl" generator_rows="150" generator_order="6" >
+		<table name="users_sessions" prior="tbl" generator_rows="0" generator_order="6" >
 			<column name="session_id" type="integer" jt="4" mandatory="y" />
 			<column name="user_id" type="integer" jt="4" mandatory="y" />
 			<index name="unq_users_sessions_session_id" unique="UNIQUE_KEY" >
@@ -237,7 +239,7 @@
 				<fk_column name="session_id" pk="session_id" />
 			</fk>
 		</table>
-		<table name="users_wallets" prior="users_walets" generator_rows="225" generator_order="8" >
+		<table name="users_wallets" prior="users_walets" generator_rows="0" generator_order="8" >
 			<column name="wallet_id" type="integer" jt="4" mandatory="y" />
 			<column name="user_id" type="integer" jt="4" mandatory="y" />
 			<index name="unq_users_walets_wallet_id" unique="UNIQUE_KEY" >
@@ -250,7 +252,7 @@
 				<fk_column name="wallet_id" pk="wallet_id" />
 			</fk>
 		</table>
-		<table name="wallets" prior="tbl" generator_rows="150" generator_order="7" spec="" >
+		<table name="wallets" prior="tbl" generator_rows="0" generator_order="7" spec="" >
 			<column name="wallet_id" type="integer" length="32" jt="4" mandatory="y" >
 				<identity><![CDATA[GENERATED  BY DEFAULT AS IDENTITY]]></identity>
 			</column>
@@ -271,6 +273,50 @@
 				<fk_column name="currency_id" pk="currency_id" />
 			</fk>
 		</table>
+		<function name="add_country" id="Function-1a42" isSystem="false" params_known="n" >
+			<string><![CDATA[CREATE [ OR REPLACE ] FUNCTION <name> ( [ [ argmode ] [ argname ] argtype [ { DEFAULT | = } default_expr ] [, ...] ] ) 
+ [ RETURNS rettype 
+ | RETURNS TABLE ( column_name column_type [, ...] ) ] 
+ { LANGUAGE lang_name 
+ | TRANSFORM { FOR TYPE type_name } [, ... ] 
+ | WINDOW 
+ | IMMUTABLE | STABLE | VOLATILE | [ NOT ] LEAKPROOF 
+ | CALLED ON NULL INPUT | RETURNS NULL ON NULL INPUT | STRICT 
+ | [ EXTERNAL ] SECURITY INVOKER | [ EXTERNAL ] SECURITY DEFINER 
+ | COST execution_cost 
+ | ROWS result_rows 
+ | SET configuration_parameter { TO value | = value | FROM CURRENT } 
+ | AS 'definition' 
+ | AS 'obj_file', 'link_symbol' 
+ } ... 
+ [ WITH ( attribute [, ...] ) ]]]></string>
+		</function>
+		<function name="add_currency" id="Function-7f0" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".add_currency(p_currency_name character varying, p_currency_short character, p_dollar_rate numeric)
+ RETURNS "home budget application".currency
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_currency "home budget application".currency%ROWTYPE;
+BEGIN
+
+    INSERT INTO "home budget application".currency (
+        currency_name, currency_short, dollar_rate
+    ) VALUES (
+        p_currency_name, p_currency_short, p_dollar_rate
+    ) RETURNING * INTO v_currency;
+    
+    RETURN v_currency;
+END;
+$function$
+;]]></string>
+			<input_param name="p_currency_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
+			<input_param name="p_dollar_rate" jt="-1" type="numeric" inOut="1" />
+			<input_param name="p_currency_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
+			<input_param name="p_dollar_rate" jt="-1" type="numeric" inOut="1" />
+		</function>
 		<function name="update_group_update_time" id="Function-a2e" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".update_group_update_time()
  RETURNS trigger
@@ -294,11 +340,8 @@ BEGIN
     RETURN NEW;
 END;
 $function$
-;
-
-CREATE TRIGGER user_update_time_trigger
-BEFORE UPDATE ON "home budget application".users
-FOR EACH ROW EXECUTE FUNCTION "home budget application".update_user_update_time();]]></string>
+;]]></string>
+			<result_param jt="-1" />
 			<result_param jt="-1" />
 		</function>
 		<trigger name="group_update_time_trigger" table="groups" id="Trigger-58c" isSystem="false" >
@@ -341,5 +384,16 @@ COMMIT;]]></string>
 		<script name="SQL_Editor_001" id="Editor-2459" language="SQL" >
 			<string><![CDATA[SELECT * FROM "home budget application".users WHERE nick_name='Tester#2';]]></string>
 		</script>
+		<script name="SQL_Editor_002" id="Editor-268b" language="SQL" >
+			<string><![CDATA[BEGIN;
+SELECT * FROM "home budget application".add_currency(
+    'Dollar', 'USD', 1
+);
+COMMIT;
+]]></string>
+		</script>
+		<browser id="Browse-113c" name="currency" confirm_updates="y" >
+			<browse_table schema="home budget application" entity="currency" x="20" y="20" width="438" height="428" />
+		</browser>
 	</layout>
 </project>

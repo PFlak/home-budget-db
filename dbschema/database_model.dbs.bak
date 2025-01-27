@@ -341,20 +341,5 @@ COMMIT;]]></string>
 		<script name="SQL_Editor_001" id="Editor-2459" language="SQL" >
 			<string><![CDATA[SELECT * FROM "home budget application".users WHERE nick_name='Tester#2';]]></string>
 		</script>
-		<query id="Query-1b84" name="Functions" >
-			<query_table schema="home budget application" name="users" alias="u" x="48" y="48" >
-				<column name="user_id" />
-				<column name="name" />
-				<column name="surname" />
-				<column name="nick_name" />
-				<column name="creation_time" />
-				<column name="update_time" />
-				<column name="email" />
-				<column name="phone_number" />
-				<column name="user_password" />
-				<column name="salt" />
-				<column name="country_id" />
-			</query_table>
-		</query>
 	</layout>
 </project>
