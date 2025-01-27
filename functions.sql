@@ -1,3 +1,17 @@
+CREATE OR REPLACE FUNCTION "home budget application".calc_currency(
+    input_dollar_rate numeric,
+    output_dollar_rate numeric,
+    input_value numeric
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $function$
+BEGIN
+    RETURN input_value * input_dollar_rate / output_dollar_rate;
+END;
+$function$
+;
+
 
 /*
     Updates update_time in group that changes were made
@@ -31,26 +45,61 @@ $function$
 CREATE OR REPLACE FUNCTION "home budget application".update_wallet_balance()
 RETURNS TRIGGER AS $$
 DECLARE
-v_transaction "home budget application".transactions%ROWTYPE;
-BEGIN
+    v_transaction "home budget application".transactions%ROWTYPE;
+    v_wallet "home budget application".wallets%ROWTYPE;
 
+    v_in_dollar_rate numeric;
+    v_out_dollar_rate numeric;
+    v_calc_value numeric;
+BEGIN
     SELECT * INTO v_transaction
     FROM "home budget application".transactions
     WHERE transaction_id = NEW.transaction_id;
 
-    IF v_transaction.transaction_type = 'withdraw'::"home budget application".transation_type THEN
+    IF v_transaction.transaction_id IS NULL THEN
+        RAISE EXCEPTION 'Transaction with id % does not exist', NEW.transaction_id;
+        RETURN OLD;
+    END IF;
+
+    SELECT * INTO v_wallet
+    FROM "home budget application".wallets
+    WHERE wallet_id = NEW.wallet_id;
+
+    IF v_wallet.wallet_id IS NULL THEN
+        RAISE EXCEPTION 'Wallet with id % does not exist', NEW.wallet_id;
+        RETURN OLD;
+    END IF;
+
+    -- Get dollar rate from transaction currency
+    SELECT dollar_rate INTO v_in_dollar_rate
+    FROM "home budget application".currency
+    WHERE currency_id = v_transaction.currency_id;
+
+    -- Get dollar rate of wallet currency
+    SELECT dollar_rate INTO v_out_dollar_rate
+    FROM "home budget application".currency
+    WHERE currency_id = v_wallet.currency_id;
+
+    -- Calculate the transaction value in the wallet currency
+    v_calc_value := "home budget application".calc_currency(
+        v_in_dollar_rate, v_out_dollar_rate, v_transaction.value
+    );
+
+    -- Update the wallet balance based on transaction type
+    IF v_transaction.transaction_type = 'withdraw'::"home budget application".transaction_type THEN
         UPDATE "home budget application".wallets
-        SET balance = balance - v_transaction.value
+        SET balance = balance - v_calc_value
         WHERE wallet_id = NEW.wallet_id;
-    ELSIF NEW.transaction_type = 'deposit'::"home budget application".transation_type THEN
+    ELSIF v_transaction.transaction_type = 'deposit'::"home budget application".transaction_type THEN
         UPDATE "home budget application".wallets
-        SET balance = balance + v_transaction.value
+        SET balance = balance + v_calc_value
         WHERE wallet_id = NEW.wallet_id;
     END IF;
 
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
 
 -- Function to add a new currency and return the whole row
 CREATE OR REPLACE FUNCTION "home budget application".add_currency(

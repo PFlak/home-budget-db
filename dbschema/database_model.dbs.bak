@@ -455,15 +455,10 @@ $function$
 			<input_param name="p_subcategory_description" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_category_name" jt="-1" type="character varying" inOut="1" />
 		</function>
-		<function name="change_user_role_in_group" id="Function-177b" isSystem="false" params_known="y" >
-			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".change_user_role_in_group(
-    p_session_hash TEXT,
-    p_email VARCHAR,
-    p_group_id INTEGER,
-    p_role VARCHAR
-)
-RETURNS "home budget application".users_groups
-LANGUAGE plpgsql
+		<function name="change_user_role_in_group" id="Function-9fa" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".change_user_role_in_group(p_session_hash text, p_email character varying, p_group_id integer, p_role character varying)
+ RETURNS "home budget application".users_groups
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_admin_user_id INTEGER;
@@ -472,13 +467,11 @@ DECLARE
 BEGIN
     -- Verify session and get admin_user_id
     v_admin_user_id := "home budget application".verify_session(p_session_hash);
-
     -- If admin_user_id is null, raise an exception
     IF v_admin_user_id IS NULL THEN
         RAISE EXCEPTION 'Invalid or expired session';
         RETURN NULL;
     END IF;
-
     -- Check if admin user is in the group and has an admin role
     IF NOT EXISTS (
         SELECT 1
@@ -490,18 +483,15 @@ BEGIN
         RAISE EXCEPTION 'User does not have admin permissions in group %', p_group_id;
         RETURN NULL;
     END IF;
-
     -- Get the user ID of the target user
     SELECT user_id INTO v_target_user_id
     FROM "home budget application".users
     WHERE email = p_email;
-
     -- If target user does not exist, raise an exception
     IF v_target_user_id IS NULL THEN
         RAISE EXCEPTION 'User with email % does not exist', p_email;
         RETURN NULL;
     END IF;
-
     -- Check if the target user is in the specified group
     IF NOT EXISTS (
         SELECT 1
@@ -512,26 +502,23 @@ BEGIN
         RAISE EXCEPTION 'User with email % is not in group %', p_email, p_group_id;
         RETURN NULL;
     END IF;
-
     -- Update the user role in the group
     UPDATE "home budget application".users_groups
     SET user_role = p_role::"home budget application".user_role_in_group
     WHERE user_id = v_target_user_id
     AND group_id = p_group_id
     RETURNING * INTO v_users_groups;
-
     -- Return the updated users_groups row
     RETURN v_users_groups;
 END;
 $function$
-;
-]]></string>
+;]]></string>
 			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
 			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_group_id" jt="-1" type="integer" inOut="1" />
 			<input_param name="p_role" jt="-1" type="character varying" inOut="1" />
 		</function>
-		<function name="create_group" id="Function-1805" isSystem="false" params_known="y" >
+		<function name="create_group" id="Function-887" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".create_group(p_session_hash text, p_group_name character varying, p_group_description character varying DEFAULT NULL::character varying, p_group_photo character varying DEFAULT NULL::character varying)
  RETURNS "home budget application".groups
  LANGUAGE plpgsql
@@ -559,10 +546,6 @@ BEGIN
 END;
 $function$
 ;]]></string>
-			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
-			<input_param name="p_group_name" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_group_description" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_group_photo" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
 			<input_param name="p_group_name" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_group_description" jt="-1" type="character varying" inOut="1" />
@@ -780,12 +763,12 @@ $function$
 			<result_param jt="-1" />
 			<result_param jt="-1" />
 		</function>
-		<function name="update_wallet_balance" id="Function-595" isSystem="false" params_known="n" >
+		<function name="update_wallet_balance" id="Function-595" isSystem="false" params_known="y" >
 			<string><![CDATA[-- Trigger function to update wallet balance
 CREATE OR REPLACE FUNCTION "home budget application".update_wallet_balance()
 RETURNS TRIGGER AS $$
 DECLARE
-v_transaction "home budget application".transactions%ROWTYPE
+v_transaction "home budget application".transactions%ROWTYPE;
 BEGIN
 
     SELECT * INTO v_transaction
@@ -805,6 +788,7 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;]]></string>
+			<result_param jt="-1" />
 		</function>
 		<function name="verify_session" id="Function-906" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".verify_session(
@@ -842,6 +826,9 @@ $function$
 		</function>
 		<trigger name="group_update_time_trigger" table="groups" id="Trigger-58c" isSystem="false" >
 			<string><![CDATA[CREATE TRIGGER group_update_time_trigger BEFORE UPDATE ON "home budget application".groups FOR EACH ROW EXECUTE FUNCTION "home budget application".update_group_update_time()]]></string>
+		</trigger>
+		<trigger name="update_wallet_balance_trigger" table="users_groups_transactions" id="Trigger-ee7" isSystem="false" >
+			<string><![CDATA[CREATE TRIGGER update_wallet_balance_trigger AFTER INSERT ON "home budget application".users_groups_transactions FOR EACH ROW EXECUTE FUNCTION "home budget application".update_wallet_balance()]]></string>
 		</trigger>
 		<trigger name="user_update_time_trigger" table="users" id="Trigger-1b00" isSystem="false" >
 			<string><![CDATA[CREATE TRIGGER user_update_time_trigger BEFORE UPDATE ON "home budget application".users FOR EACH ROW EXECUTE FUNCTION "home budget application".update_user_update_time()]]></string>
