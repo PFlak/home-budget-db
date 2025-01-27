@@ -66,6 +66,16 @@ SELECT * FROM "home budget application".create_user('Tester', 'tester@domain.com
 -- Error
 SELECT * FROM "home budget application".create_user('Tester', 'testerdomain.com', 'password', 'PL', NULL, 'tester');
 -- Error
-SELECT * FROM "home budget application".create_user('Tester', 'tester@domain.com', 'password', 'PL', NULL, 'tester');
+SELECT * FROM "home budget application".create_user('Tester', 'tester1@domain.com', 'password', 'PL', NULL, 'tester');
 -- Success
+
+
+-- Test login_user function
+SELECT * FROM "home budget application".login_user('tester@domain.com', 'password');
+-- Got: da37d8301bc2dd827949e0701a69824e
+-- Success
+SELECT * FROM "home budget application".login_user('tester@domain.com', 'password1');
+-- Error
+SELECT * FROM "home budget application".login_user('tester2@domain.com', 'password');
+-- Error
 
