@@ -284,8 +284,28 @@ $function$
 ;]]></string>
 			<result_param jt="-1" />
 		</function>
+		<function name="update_user_update_time" id="Function-21ea" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".update_user_update_time()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.update_time = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$function$
+;
+
+CREATE TRIGGER user_update_time_trigger
+BEFORE UPDATE ON "home budget application".users
+FOR EACH ROW EXECUTE FUNCTION "home budget application".update_user_update_time();]]></string>
+			<result_param jt="-1" />
+		</function>
 		<trigger name="group_update_time_trigger" table="groups" id="Trigger-58c" isSystem="false" >
 			<string><![CDATA[CREATE TRIGGER group_update_time_trigger BEFORE UPDATE ON "home budget application".groups FOR EACH ROW EXECUTE FUNCTION "home budget application".update_group_update_time()]]></string>
+		</trigger>
+		<trigger name="user_update_time_trigger" table="users" id="Trigger-1b00" isSystem="false" >
+			<string><![CDATA[CREATE TRIGGER user_update_time_trigger BEFORE UPDATE ON "home budget application".users FOR EACH ROW EXECUTE FUNCTION "home budget application".update_user_update_time()]]></string>
 		</trigger>
 	</schema>
 	<layout name="Default Layout" id="Layout-211" joined_routing="y" show_relation="columns" >
@@ -304,22 +324,22 @@ $function$
 		<entity schema="home budget application" name="users_wallets" color="CAEED2" x="64" y="336" />
 		<entity schema="home budget application" name="wallets" color="C1D8EE" x="48" y="432" />
 		<script name="SQL_Editor" id="Editor-7ac" language="SQL" >
-			<string><![CDATA[ROLLBACK;
--- Test group_update_time_trigger-- Insert a group
+			<string><![CDATA[COMMIT;
+-- Test user_update_time_trigger
 BEGIN;
-INSERT INTO "home budget application".groups (group_name, group_description, creation_time, update_time, owner_id)
-VALUES ('Test Group', 'Description', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
+INSERT INTO "home budget application".users (name, nick_name, email, user_password, salt, country_id)
+VALUES ('Tester', 'Tester#2', 'email', 'password', 'salt', 1);
 
-SELECT update_time FROM "home budget application".groups WHERE owner_id=1 AND group_name='Test Group';
+SELECT update_time FROM "home budget application".users WHERE nick_name='Tester#2';
 
-UPDATE "home budget application".groups SET group_description='NEW Description' WHERE owner_id=1 AND group_name='Test Group';
+UPDATE "home budget application".users SET email='NEW email' WHERE nick_name='Tester#2';
 
-SELECT update_time, group_description FROM "home budget application".groups WHERE owner_id=1 AND group_name='Test Group';
+SELECT update_time, email FROM "home budget application".users WHERE nick_name='Tester#2';
 
 COMMIT;]]></string>
 		</script>
 		<script name="SQL_Editor_001" id="Editor-2459" language="SQL" >
-			<string><![CDATA[SELECT * FROM "home budget application".groups;]]></string>
+			<string><![CDATA[SELECT * FROM "home budget application".users WHERE nick_name='Tester#2';]]></string>
 		</script>
 	</layout>
 </project>

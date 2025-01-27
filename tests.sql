@@ -17,3 +17,23 @@ UPDATE "home budget application".groups SET group_description='NEW Description' 
 SELECT update_time, group_description FROM "home budget application".groups WHERE owner_id=1 AND group_name='Test Group';
 
 COMMIT;
+
+-- Test user_update_time_trigger
+
+/*
+    1. Inserts new user
+    2. Checks update time (same sa creation_time or null)
+    3. Updates email
+    4. Checks update time (new)
+*/
+BEGIN;
+INSERT INTO "home budget application".users (name, nick_name, email, user_password, salt, country_id)
+VALUES ('Tester', 'Tester#2', 'email', 'password', 'salt', 1);
+
+SELECT update_time FROM "home budget application".users WHERE nick_name='Tester#2';
+
+UPDATE "home budget application".users SET email='NEW email' WHERE nick_name='Tester#2';
+
+SELECT update_time, email FROM "home budget application".users WHERE nick_name='Tester#2';
+
+COMMIT;
