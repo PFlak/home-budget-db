@@ -104,3 +104,39 @@ BEGIN
 END;
 $function$
 ;
+
+-- Function to add a new subcategory and return the whole row
+CREATE OR REPLACE FUNCTION "home budget application".add_subcategory(
+    p_subcategory_name character varying,
+    p_subcategory_description character varying,
+    p_category_name character varying
+)
+RETURNS "home budget application".subcategories
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_subcategory "home budget application".subcategories%ROWTYPE;
+    v_category_id INTEGER;
+BEGIN
+    -- Check if the category exists
+    SELECT category_id INTO v_category_id
+    FROM "home budget application".categories
+    WHERE category_name = p_category_name;
+
+    -- If the category ID is null, raise an exception and do not insert the subcategory
+    IF v_category_id IS NULL THEN
+        RAISE EXCEPTION 'Category with name % does not exist', p_category_name;
+        RETURN NULL;
+    END IF;
+
+    -- Insert the subcategory if the category exists
+    INSERT INTO "home budget application".subcategories (
+        subcategory_name, subcategory_description, category_id
+    ) VALUES (
+        p_subcategory_name, p_subcategory_description, v_category_id
+    ) RETURNING * INTO v_subcategory;
+    
+    RETURN v_subcategory;
+END;
+$function$
+;

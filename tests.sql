@@ -52,3 +52,10 @@ COMMIT;
 
 -- Test add_category function
 SELECT * FROM "home budget application".add_category('Shopping', 'General shopping');
+
+-- Test add_subdirectory function
+SELECT * FROM "home budget application".add_subcategory('Clothes', NULL, 'Entertainment');
+-- Error
+SELECT * FROM "home budget application".add_subcategory('Clothes', NULL, 'Shopping');
+-- Success
+
