@@ -27,6 +27,31 @@ END;
 $function$
 ;
 
+-- Trigger function to update wallet balance
+CREATE OR REPLACE FUNCTION "home budget application".update_wallet_balance()
+RETURNS TRIGGER AS $$
+DECLARE
+v_transaction "home budget application".transactions%ROWTYPE;
+BEGIN
+
+    SELECT * INTO v_transaction
+    FROM "home budget application".transactions
+    WHERE transaction_id = NEW.transaction_id;
+
+    IF v_transaction.transaction_type = 'withdraw'::"home budget application".transation_type THEN
+        UPDATE "home budget application".wallets
+        SET balance = balance - v_transaction.value
+        WHERE wallet_id = NEW.wallet_id;
+    ELSIF NEW.transaction_type = 'deposit'::"home budget application".transation_type THEN
+        UPDATE "home budget application".wallets
+        SET balance = balance + v_transaction.value
+        WHERE wallet_id = NEW.wallet_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Function to add a new currency and return the whole row
 CREATE OR REPLACE FUNCTION "home budget application".add_currency(
     p_currency_name VARCHAR,
