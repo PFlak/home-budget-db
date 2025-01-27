@@ -81,3 +81,26 @@ BEGIN
 END;
 $function$
 ;
+
+-- Function to add a new category and return the whole row
+CREATE OR REPLACE FUNCTION "home budget application".add_category(
+    p_category_name character varying,
+    p_category_description character varying
+)
+RETURNS "home budget application".categories
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_category "home budget application".categories%ROWTYPE;
+BEGIN
+    -- Insert the category
+    INSERT INTO "home budget application".categories (
+        category_name, category_description
+    ) VALUES (
+        p_category_name, p_category_description
+    ) RETURNING * INTO v_category;
+    
+    RETURN v_category;
+END;
+$function$
+;

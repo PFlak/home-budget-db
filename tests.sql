@@ -49,3 +49,6 @@ SELECT * FROM "home budget application".add_country(
     'Poland', 'PL', 'PLN'
 );
 COMMIT;
+
+-- Test add_category function
+SELECT * FROM "home budget application".add_category('Shopping', 'General shopping');
