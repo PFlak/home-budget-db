@@ -336,3 +336,88 @@ BEGIN
 END;
 $function$
 ;
+
+-- Function for joining group returns users_groups row
+CREATE OR REPLACE FUNCTION "home budget application".join_group(
+    p_session_hash TEXT,
+    p_group_id integer,
+    p_user_role VARCHAR
+)
+RETURNS "home budget application".users_groups
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user_id INTEGER;
+    v_group "home budget application".groups%ROWTYPE;
+    v_users_groups "home budget application".users_groups%ROWTYPE;
+BEGIN
+    -- Verify session and get user_id
+    v_user_id := "home budget application".verify_session(p_session_hash);
+
+    -- If user_id is null, raise an exception
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired session';
+        RETURN NULL;
+    END IF;
+
+    -- Check if group exists --
+    SELECT * INTO v_group
+    FROM "home budget application".groups
+    WHERE group_id = p_group_id;
+
+    IF v_group IS NULL THEN
+        RAISE EXCEPTION 'Group with ID: % does not exist', p_group_id;
+        RETURN NULL;
+    END IF;
+
+    INSERT INTO "home budget application".users_groups (
+        user_role, group_id, user_id
+    ) VALUES (
+        p_user_role::"home budget application".user_role_in_group, p_group_id, v_user_id
+    ) RETURNING * INTO v_users_groups;
+
+    RETURN v_users_groups;
+    
+END;
+$function$
+;
+
+
+
+CREATE OR REPLACE FUNCTION "home budget application".create_group(
+    p_session_hash TEXT,
+    p_group_name VARCHAR,
+    p_group_description VARCHAR DEFAULT NULL,
+    p_group_photo VARCHAR DEFAULT NULL
+)
+RETURNS "home budget application".groups
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user_id INTEGER;
+    v_group "home budget application".groups%ROWTYPE;
+BEGIN
+    -- Verify session and get user_id
+    v_user_id := "home budget application".verify_session(p_session_hash);
+
+    -- If user_id is null, raise an exception
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired session';
+        RETURN NULL;
+    END IF;
+
+    -- Creates new group in table groups
+    INSERT INTO "home budget application".groups (
+        group_name, group_description, group_photo, owner_id
+    ) VALUES (
+        p_group_name, p_group_description, p_group_photo, v_user_id
+    ) RETURNING * INTO v_group;
+
+    -- Adds User to users_groups table with admin permissions
+    PERFORM "home budget application".join_group(p_session_hash, v_group.group_id, 'admin');
+
+    RETURN v_group;
+
+END;
+$function$
+;
