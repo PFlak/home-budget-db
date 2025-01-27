@@ -455,6 +455,50 @@ $function$
 			<input_param name="p_subcategory_description" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_category_name" jt="-1" type="character varying" inOut="1" />
 		</function>
+		<function name="create_group" id="Function-1805" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".create_group(
+    p_session_hash TEXT,
+    p_group_name VARCHAR,
+    p_group_description VARCHAR DEFAULT NULL,
+    p_group_photo VARCHAR DEFAULT NULL
+)
+RETURNS "home budget application".groups
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user_id INTEGER;
+    v_group "home budget application".groups%ROWTYPE;
+BEGIN
+    -- Verify session and get user_id
+    v_user_id := "home budget application".verify_session(p_session_hash);
+
+    -- If user_id is null, raise an exception
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired session';
+        RETURN NULL;
+    END IF;
+
+    -- Creates new group in table groups
+    INSERT INTO "home budget application".groups (
+        group_name, group_description, group_photo, owner_id
+    ) VALUES (
+        p_group_name, p_group_description, p_group_photo, v_user_id
+    ) RETURNING * INTO v_group;
+
+    -- Adds User to users_groups table with admin permissions
+    PERFORM "home budget application".join_group(p_session_hash, v_group.group_id, 'admin');
+
+    RETURN v_group;
+
+END;
+$function$
+;
+]]></string>
+			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
+			<input_param name="p_group_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_group_description" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_group_photo" jt="-1" type="character varying" inOut="1" />
+		</function>
 		<function name="create_user" id="Function-14ff" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".create_user(p_name character varying, p_email character varying, p_user_password character varying, p_country_short character, p_surname character varying DEFAULT NULL::character varying, p_nick_name character varying DEFAULT NULL::character varying, p_phone_number character varying DEFAULT NULL::character varying)
  RETURNS "home budget application".users
@@ -516,19 +560,66 @@ $function$
 			<input_param name="p_nick_name" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_phone_number" jt="-1" type="character varying" inOut="1" />
 		</function>
-		<function name="create_wallet" id="Function-657" isSystem="false" params_known="y" >
-			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".create_wallet(
-    p_session_hash TEXT,
-    p_wallet_name VARCHAR,
-    p_currency_short CHAR(3)
-)
-RETURNS "home budget application".wallets
-LANGUAGE plpgsql
+		<function name="create_wallet" id="Function-12b5" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".create_wallet(p_session_hash text, p_wallet_name character varying, p_currency_short character)
+ RETURNS "home budget application".wallets
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_user_id INTEGER;
     v_wallet "home budget application".wallets%ROWTYPE;
     v_currency_id INTEGER;
+BEGIN
+    -- Verify session and get user_id
+    v_user_id := "home budget application".verify_session(p_session_hash);
+    -- If user_id is null, raise an exception
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired session';
+        RETURN NULL;
+    END IF;
+    -- Lookup currency_id based on currency_short
+    SELECT currency_id INTO v_currency_id
+    FROM "home budget application".currency
+    WHERE currency_short = p_currency_short;
+    -- If currency_id is null, raise an exception
+    IF v_currency_id IS NULL THEN
+        RAISE EXCEPTION 'Currency with short code % does not exist', p_currency_short;
+        RETURN NULL;
+    END IF;
+    -- Create a new wallet
+    INSERT INTO "home budget application".wallets (
+        wallet_name, currency_id
+    ) VALUES (
+        p_wallet_name, v_currency_id
+    ) RETURNING * INTO v_wallet;
+    -- Link the wallet with the user
+    INSERT INTO "home budget application".users_wallets (
+        wallet_id, user_id
+    ) VALUES (
+        v_wallet.wallet_id, v_user_id
+    );
+    -- Return the wallet
+    RETURN v_wallet;
+END;
+$function$
+;]]></string>
+			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
+			<input_param name="p_wallet_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
+		</function>
+		<function name="join_group" id="Function-624" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".join_group(
+    p_session_hash TEXT,
+    p_group_id integer,
+    p_user_role VARCHAR
+)
+RETURNS "home budget application".users_groups
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user_id INTEGER;
+    v_group "home budget application".groups%ROWTYPE;
+    v_users_groups "home budget application".users_groups%ROWTYPE;
 BEGIN
     -- Verify session and get user_id
     v_user_id := "home budget application".verify_session(p_session_hash);
@@ -539,40 +630,34 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    -- Lookup currency_id based on currency_short
-    SELECT currency_id INTO v_currency_id
-    FROM "home budget application".currency
-    WHERE currency_short = p_currency_short;
+    -- Check if group exists --
+    SELECT * INTO v_group
+    FROM "home budget application".groups
+    WHERE group_id = p_group_id;
 
-    -- If currency_id is null, raise an exception
-    IF v_currency_id IS NULL THEN
-        RAISE EXCEPTION 'Currency with short code % does not exist', p_currency_short;
+    IF v_group IS NULL THEN
+        RAISE EXCEPTION 'Group with ID: % does not exist', p_group_id;
         RETURN NULL;
     END IF;
 
-    -- Create a new wallet
-    INSERT INTO "home budget application".wallets (
-        wallet_name, currency_id
+    INSERT INTO "home budget application".users_groups (
+        user_role, group_id, user_id
     ) VALUES (
-        p_wallet_name, v_currency_id
-    ) RETURNING * INTO v_wallet;
+    p_user_role::"home budget application".user_role_in_group, p_group_id, v_user_id
+    ) RETURNING * INTO v_users_groups;
 
-    -- Link the wallet with the user
-    INSERT INTO "home budget application".users_wallets (
-        wallet_id, user_id
-    ) VALUES (
-        v_wallet.wallet_id, v_user_id
-    );
-
-    -- Return the wallet
-    RETURN v_wallet;
+    RETURN v_users_groups;
+    
 END;
 $function$
 ;
 ]]></string>
 			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
-			<input_param name="p_wallet_name" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
+			<input_param name="p_group_id" jt="-1" type="integer" inOut="1" />
+			<input_param name="p_user_role" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
+			<input_param name="p_group_id" jt="-1" type="integer" inOut="1" />
+			<input_param name="p_user_role" jt="-1" type="character varying" inOut="1" />
 		</function>
 		<function name="login_user" id="Function-17ab" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".login_user(p_email character varying, p_user_password character varying)

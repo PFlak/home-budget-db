@@ -421,3 +421,74 @@ BEGIN
 END;
 $function$
 ;
+
+-- Function that changes user role in group by admin user
+CREATE OR REPLACE FUNCTION "home budget application".change_user_role_in_group(
+    p_session_hash TEXT,
+    p_email VARCHAR,
+    p_group_id INTEGER,
+    p_role VARCHAR
+)
+RETURNS "home budget application".users_groups
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_admin_user_id INTEGER;
+    v_target_user_id INTEGER;
+    v_users_groups "home budget application".users_groups%ROWTYPE;
+BEGIN
+    -- Verify session and get admin_user_id
+    v_admin_user_id := "home budget application".verify_session(p_session_hash);
+
+    -- If admin_user_id is null, raise an exception
+    IF v_admin_user_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired session';
+        RETURN NULL;
+    END IF;
+
+    -- Check if admin user is in the group and has an admin role
+    IF NOT EXISTS (
+        SELECT 1
+        FROM "home budget application".users_groups
+        WHERE user_id = v_admin_user_id
+        AND group_id = p_group_id
+        AND user_role = 'admin'
+    ) THEN
+        RAISE EXCEPTION 'User does not have admin permissions in group %', p_group_id;
+        RETURN NULL;
+    END IF;
+
+    -- Get the user ID of the target user
+    SELECT user_id INTO v_target_user_id
+    FROM "home budget application".users
+    WHERE email = p_email;
+
+    -- If target user does not exist, raise an exception
+    IF v_target_user_id IS NULL THEN
+        RAISE EXCEPTION 'User with email % does not exist', p_email;
+        RETURN NULL;
+    END IF;
+
+    -- Check if the target user is in the specified group
+    IF NOT EXISTS (
+        SELECT 1
+        FROM "home budget application".users_groups
+        WHERE user_id = v_target_user_id
+        AND group_id = p_group_id
+    ) THEN
+        RAISE EXCEPTION 'User with email % is not in group %', p_email, p_group_id;
+        RETURN NULL;
+    END IF;
+
+    -- Update the user role in the group
+    UPDATE "home budget application".users_groups
+    SET user_role = p_role::"home budget application".user_role_in_group
+    WHERE user_id = v_target_user_id
+    AND group_id = p_group_id
+    RETURNING * INTO v_users_groups;
+
+    -- Return the updated users_groups row
+    RETURN v_users_groups;
+END;
+$function$
+;

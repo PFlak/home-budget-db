@@ -94,4 +94,38 @@ SELECT * FROM "home budget application".create_wallet('wrong_session_hash', 'Tes
 SELECT * FROM "home budget application".create_wallet('da37d8301bc2dd827949e0701a69824e', 'Test wallet', 'NOT');
 -- Error
 
+-- Test create group and join group and change user role in group
+DO $$
+DECLARE
+	admin_session_hash TEXT;
+	test_group_id INTEGER;
+BEGIN
+    -- Create an admin user
+    PERFORM "home budget application".create_user(
+        'AdminUser', 'admin1@example.com', 'adminpassword', 'PL', 'adminuser', 'adminuser', NULL
+    );
+
+    -- Log in the admin user to get a session hash
+    SELECT * INTO admin_session_hash FROM "home budget application".login_user('admin1@example.com', 'adminpassword');
+
+    -- Create a group
+    SELECT group_id INTO test_group_id FROM "home budget application".create_group(
+        admin_session_hash, 'Test Group', 'This is a test group'
+    );
+
+    -- Add another user
+    PERFORM "home budget application".create_user(
+        'RegularUser', 'user1@example.com', 'userpassword', 'PL', 'guestuser', 'guestuser', NULL
+    );
+
+    -- Admin adds the regular user to the group
+    PERFORM "home budget application".join_group(
+        admin_session_hash, test_group_id, 'guest'
+    );
+
+    -- Admin changes the role of the regular user within the group
+    PERFORM "home budget application".change_user_permission_in_group(
+        admin_session_hash, 'user1@example.com', test_group_id, 'admin'
+    );
+END $$;
 
