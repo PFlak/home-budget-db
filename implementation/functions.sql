@@ -566,3 +566,125 @@ BEGIN
 END;
 $function$
 ;
+
+-- Function for making transaction
+CREATE OR REPLACE FUNCTION "home budget application".make_transaction(
+    p_session_hash TEXT,
+    p_wallet_id INTEGER,
+    p_value NUMERIC,
+    p_currency_short CHAR(3),
+    p_transaction_type "home budget application".transaction_type,
+    p_category_name VARCHAR,
+    p_group_id INTEGER,
+    p_subcategory_name VARCHAR DEFAULT NULL
+) RETURNS "home budget application".transactions AS $function$
+DECLARE
+    v_user_id INTEGER;
+    v_currency_id INTEGER;
+    v_category_id INTEGER;
+    v_subcategory_id INTEGER;
+    v_transaction "home budget application".transactions%ROWTYPE;
+    v_wallet "home budget application".wallets%ROWTYPE;
+
+    v_in_dollar_rate NUMERIC;
+    v_out_dollar_rate NUMERIC;
+    v_calc_value NUMERIC;
+BEGIN
+    -- Verify session and get user_id
+    v_user_id := "home budget application".verify_session(p_session_hash);
+
+    -- If user_id is null, raise an exception
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired session';
+        RETURN NULL;
+    END IF;
+
+    -- Retrieve the currency_id
+    SELECT currency_id INTO v_currency_id
+    FROM "home budget application".currency
+    WHERE currency_short = p_currency_short;
+
+    -- If currency_id is null, raise an exception
+    IF v_currency_id IS NULL THEN
+        RAISE EXCEPTION 'Currency with short code % does not exist', p_currency_short;
+        RETURN NULL;
+    END IF;
+
+    -- Retrieve the category_id
+    SELECT category_id INTO v_category_id
+    FROM "home budget application".categories
+    WHERE category_name = p_category_name;
+
+    -- If v_category_id is null, raise an exception
+    IF v_category_id IS NULL THEN
+        RAISE EXCEPTION 'Category with name % does not exist', p_category_name;
+        RETURN NULL;
+    END IF;
+
+    IF p_group_id IS NOT NULL THEN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM "home budget application".groups
+            WHERE group_id = p_group_id
+        ) THEN
+            RAISE EXCEPTION 'Group with id % does not exist', p_group_id;
+            RETURN NULL;
+        END IF;
+    END IF;
+
+    -- Retrieve the subcategory_id (if provided)
+    IF p_subcategory_name IS NOT NULL THEN
+        SELECT subcategory_id INTO v_subcategory_id
+        FROM "home budget application".subcategories
+        WHERE subcategory_name = p_subcategory_name
+        AND category_id = v_category_id;
+    ELSE
+        v_subcategory_id := NULL;
+    END IF;
+
+    -- Check if wallet exists and retrieve balance
+    SELECT * INTO v_wallet
+    FROM "home budget application".wallets
+    WHERE wallet_id = p_wallet_id;
+
+    IF v_wallet.wallet_id IS NULL THEN
+        RAISE EXCEPTION 'Wallet with id % does not exist', p_wallet_id;
+        RETURN NULL;
+    END IF;
+
+    -- Get dollar rates for currency conversion
+    SELECT dollar_rate INTO v_in_dollar_rate
+    FROM  "home budget application".currency
+    WHERE currency_id = v_currency_id;
+
+    SELECT dollar_rate INTO v_out_dollar_rate
+    FROM  "home budget application".currency
+    WHERE currency_id = v_wallet.currency_id;
+
+    -- Calculate transaction value in wallet currency
+    v_calc_value := "home budget application".calc_currency(v_in_dollar_rate, v_out_dollar_rate, p_value);
+
+    -- Check if there are sufficient funds for a withdrawal
+    IF p_transaction_type = 'withdraw' AND v_wallet.balance < v_calc_value THEN
+        RAISE EXCEPTION 'Insufficient funds in wallet id %', p_wallet_id;
+        RETURN NULL;
+    END IF;
+
+    -- Insert the transaction into the transactions table
+    INSERT INTO "home budget application".transactions (
+        value, currency_id, transaction_type, category_id, subcategory_id
+    ) VALUES (
+        p_value, v_currency_id, p_transaction_type, v_category_id, v_subcategory_id
+    ) RETURNING * INTO v_transaction;
+
+    -- Insert into users_groups_transactions
+    INSERT INTO "home budget application".users_groups_transactions (
+        user_id, wallet_id, transaction_id, group_id
+    ) VALUES (
+        v_user_id, p_wallet_id, v_transaction.transaction_id, p_group_id
+    );
+
+    RETURN v_transaction;
+END;
+$function$
+LANGUAGE plpgsql;
