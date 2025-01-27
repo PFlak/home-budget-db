@@ -59,3 +59,13 @@ SELECT * FROM "home budget application".add_subcategory('Clothes', NULL, 'Entert
 SELECT * FROM "home budget application".add_subcategory('Clothes', NULL, 'Shopping');
 -- Success
 
+-- Test create_user function
+SELECT * FROM "home budget application".create_user('Tester', 'tester@domain.com', 'password', 'PL', NULL, 'tester');
+-- Success
+SELECT * FROM "home budget application".create_user('Tester', 'tester@domain.com', 'password', 'PLN', NULL, 'tester');
+-- Error
+SELECT * FROM "home budget application".create_user('Tester', 'testerdomain.com', 'password', 'PL', NULL, 'tester');
+-- Error
+SELECT * FROM "home budget application".create_user('Tester', 'tester@domain.com', 'password', 'PL', NULL, 'tester');
+-- Success
+

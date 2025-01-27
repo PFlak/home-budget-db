@@ -140,3 +140,69 @@ BEGIN
 END;
 $function$
 ;
+
+-- Function to create user
+CREATE OR REPLACE FUNCTION "home budget application".create_user(
+    p_name VARCHAR,
+    p_email VARCHAR,
+    p_user_password VARCHAR,
+    p_country_short CHAR(3),
+    p_surname VARCHAR DEFAULT NULL,
+    p_nick_name VARCHAR DEFAULT NULL,
+    p_phone_number VARCHAR DEFAULT NULL   
+)
+RETURNS "home budget application".users
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user "home budget application".users%ROWTYPE;
+    v_salt VARCHAR := md5(random()::text || clock_timestamp()::text);
+    v_hashed_password VARCHAR := md5(p_user_password || v_salt);
+    v_country_id INTEGER;
+    v_sequence INTEGER := 1;
+    v_new_nick_name VARCHAR;
+BEGIN
+    -- Check if email has correct syntax
+    IF p_email !~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' THEN
+        RAISE EXCEPTION 'Invalid email format: %', p_email;
+        RETURN NULL;
+    END IF;
+
+    -- Lookup country_id based on country_short
+    SELECT country_id INTO v_country_id
+    FROM "home budget application".countries
+    WHERE country_code = p_country_short;
+
+    -- If country_id is null, raise an exception
+    IF v_country_id IS NULL THEN
+        RAISE EXCEPTION 'Country with short code % does not exist', p_country_short;
+        RETURN NULL;
+    END IF;
+
+    -- Generate a unique nick_name if not provided
+    IF p_nick_name IS NULL THEN
+        v_new_nick_name := p_name || to_char(floor(random() * 9 + 1)::integer, 'FM0000');
+        -- Check if the generated nick_name already exists
+        WHILE EXISTS (SELECT 1 FROM "home budget application".users WHERE nick_name = v_new_nick_name) LOOP
+            v_sequence := v_sequence + 1;
+            v_new_nick_name := p_name || to_char(v_sequence, 'FM0000');
+        END LOOP;
+        p_nick_name := v_new_nick_name;
+    ELSE
+        -- Check if the provided nick_name already exists
+        WHILE EXISTS (SELECT 1 FROM "home budget application".users WHERE nick_name = p_nick_name) LOOP
+            v_sequence := v_sequence + 1;
+            p_nick_name := p_nick_name || to_char(v_sequence, 'FM0000');
+        END LOOP;
+    END IF;
+
+    -- Insert the new user
+    INSERT INTO "home budget application".users (
+        name, surname, nick_name, email, phone_number, user_password, salt, country_id
+    ) VALUES (
+        p_name, p_surname, p_nick_name, p_email, p_phone_number, v_hashed_password, v_salt, v_country_id
+    ) RETURNING * INTO v_user;
+
+    RETURN v_user;
+END;
+$function$
