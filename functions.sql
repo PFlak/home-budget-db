@@ -283,3 +283,56 @@ END;
 $function$
 ;
 
+-- Function to create wallet
+CREATE OR REPLACE FUNCTION "home budget application".create_wallet(
+    p_session_hash TEXT,
+    p_wallet_name VARCHAR,
+    p_currency_short CHAR(3)
+)
+RETURNS "home budget application".wallets
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user_id INTEGER;
+    v_wallet "home budget application".wallets%ROWTYPE;
+    v_currency_id INTEGER;
+BEGIN
+    -- Verify session and get user_id
+    v_user_id := "home budget application".verify_session(p_session_hash);
+
+    -- If user_id is null, raise an exception
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired session';
+        RETURN NULL;
+    END IF;
+
+    -- Lookup currency_id based on currency_short
+    SELECT currency_id INTO v_currency_id
+    FROM "home budget application".currency
+    WHERE currency_short = p_currency_short;
+
+    -- If currency_id is null, raise an exception
+    IF v_currency_id IS NULL THEN
+        RAISE EXCEPTION 'Currency with short code % does not exist', p_currency_short;
+        RETURN NULL;
+    END IF;
+
+    -- Create a new wallet
+    INSERT INTO "home budget application".wallets (
+        wallet_name, currency_id
+    ) VALUES (
+        p_wallet_name, v_currency_id
+    ) RETURNING * INTO v_wallet;
+
+    -- Link the wallet with the user
+    INSERT INTO "home budget application".users_wallets (
+        wallet_id, user_id
+    ) VALUES (
+        v_wallet.wallet_id, v_user_id
+    );
+
+    -- Return the wallet
+    RETURN v_wallet;
+END;
+$function$
+;

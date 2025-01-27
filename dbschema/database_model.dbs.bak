@@ -455,18 +455,10 @@ $function$
 			<input_param name="p_subcategory_description" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_category_name" jt="-1" type="character varying" inOut="1" />
 		</function>
-		<function name="create_user" id="Function-1c75" isSystem="false" params_known="y" >
-			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".create_user(
-    p_name VARCHAR,
-    p_email VARCHAR,
-    p_user_password VARCHAR,
-    p_country_short CHAR(3),
-    p_surname VARCHAR DEFAULT NULL,
-    p_nick_name VARCHAR DEFAULT NULL,
-    p_phone_number VARCHAR DEFAULT NULL   
-)
-RETURNS "home budget application".users
-LANGUAGE plpgsql
+		<function name="create_user" id="Function-14ff" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".create_user(p_name character varying, p_email character varying, p_user_password character varying, p_country_short character, p_surname character varying DEFAULT NULL::character varying, p_nick_name character varying DEFAULT NULL::character varying, p_phone_number character varying DEFAULT NULL::character varying)
+ RETURNS "home budget application".users
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_user "home budget application".users%ROWTYPE;
@@ -481,18 +473,15 @@ BEGIN
         RAISE EXCEPTION 'Invalid email format: %', p_email;
         RETURN NULL;
     END IF;
-
     -- Lookup country_id based on country_short
     SELECT country_id INTO v_country_id
     FROM "home budget application".countries
     WHERE country_code = p_country_short;
-
     -- If country_id is null, raise an exception
     IF v_country_id IS NULL THEN
         RAISE EXCEPTION 'Country with short code % does not exist', p_country_short;
         RETURN NULL;
     END IF;
-
     -- Generate a unique nick_name if not provided
     IF p_nick_name IS NULL THEN
         v_new_nick_name := p_name || to_char(floor(random() * 9 + 1)::integer, 'FM0000');
@@ -509,24 +498,16 @@ BEGIN
             p_nick_name := p_nick_name || to_char(v_sequence, 'FM0000');
         END LOOP;
     END IF;
-
     -- Insert the new user
     INSERT INTO "home budget application".users (
         name, surname, nick_name, email, phone_number, user_password, salt, country_id
     ) VALUES (
         p_name, p_surname, p_nick_name, p_email, p_phone_number, v_hashed_password, v_salt, v_country_id
     ) RETURNING * INTO v_user;
-
     RETURN v_user;
 END;
-$function$]]></string>
-			<input_param name="p_name" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_user_password" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_country_short" jt="-1" type="character" inOut="1" />
-			<input_param name="p_surname" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_nick_name" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_phone_number" jt="-1" type="character varying" inOut="1" />
+$function$
+;]]></string>
 			<input_param name="p_name" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_user_password" jt="-1" type="character varying" inOut="1" />
@@ -579,6 +560,8 @@ $function$
 ;]]></string>
 			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_user_password" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_user_password" jt="-1" type="character varying" inOut="1" />
 		</function>
 		<function name="update_group_update_time" id="Function-a2e" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".update_group_update_time()
@@ -606,6 +589,40 @@ $function$
 ;]]></string>
 			<result_param jt="-1" />
 			<result_param jt="-1" />
+		</function>
+		<function name="verify_session" id="Function-906" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".verify_session(
+    p_session_hash TEXT
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_session "home budget application".sessions%ROWTYPE;
+    v_user_id INTEGER;
+BEGIN
+    -- Retrieve session by session hash
+    SELECT * INTO v_session
+    FROM "home budget application".sessions
+    WHERE hash = p_session_hash;
+
+    -- Check if session exists and is still valid
+    IF v_session.session_id IS NULL THEN
+        RETURN NULL;
+    ELSIF v_session.expiration_time < CURRENT_TIMESTAMP THEN
+        RETURN NULL;
+    ELSE
+        -- Retrieve user_id from users_sessions
+        SELECT user_id INTO v_user_id
+        FROM "home budget application".users_sessions
+        WHERE session_id = v_session.session_id;
+
+        RETURN v_user_id;
+    END IF;
+END;
+$function$
+;]]></string>
+			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
 		</function>
 		<trigger name="group_update_time_trigger" table="groups" id="Trigger-58c" isSystem="false" >
 			<string><![CDATA[CREATE TRIGGER group_update_time_trigger BEFORE UPDATE ON "home budget application".groups FOR EACH ROW EXECUTE FUNCTION "home budget application".update_group_update_time()]]></string>

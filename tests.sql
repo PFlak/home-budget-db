@@ -85,3 +85,13 @@ SELECT * FROM "home budget application".verify_session('da37d8301bc2dd827949e070
 -- Success
 SELECT * FROM "home budget application".verify_session('da37d8301bc2dd827949e0701a698');
 -- Error
+
+-- Test create_wallet function
+SELECT * FROM "home budget application".create_wallet('da37d8301bc2dd827949e0701a69824e', 'Test wallet', 'USD');
+-- Success
+SELECT * FROM "home budget application".create_wallet('wrong_session_hash', 'Test wallet', 'USD');
+-- Error
+SELECT * FROM "home budget application".create_wallet('da37d8301bc2dd827949e0701a69824e', 'Test wallet', 'NOT');
+-- Error
+
+

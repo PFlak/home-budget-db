@@ -516,13 +516,68 @@ $function$
 			<input_param name="p_nick_name" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_phone_number" jt="-1" type="character varying" inOut="1" />
 		</function>
-		<function name="login_user" id="Function-25ee" isSystem="false" params_known="y" >
-			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".login_user(
-    p_email VARCHAR,
-    p_user_password VARCHAR
+		<function name="create_wallet" id="Function-657" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".create_wallet(
+    p_session_hash TEXT,
+    p_wallet_name VARCHAR,
+    p_currency_short CHAR(3)
 )
-RETURNS TEXT 
+RETURNS "home budget application".wallets
 LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user_id INTEGER;
+    v_wallet "home budget application".wallets%ROWTYPE;
+    v_currency_id INTEGER;
+BEGIN
+    -- Verify session and get user_id
+    v_user_id := "home budget application".verify_session(p_session_hash);
+
+    -- If user_id is null, raise an exception
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Invalid or expired session';
+        RETURN NULL;
+    END IF;
+
+    -- Lookup currency_id based on currency_short
+    SELECT currency_id INTO v_currency_id
+    FROM "home budget application".currency
+    WHERE currency_short = p_currency_short;
+
+    -- If currency_id is null, raise an exception
+    IF v_currency_id IS NULL THEN
+        RAISE EXCEPTION 'Currency with short code % does not exist', p_currency_short;
+        RETURN NULL;
+    END IF;
+
+    -- Create a new wallet
+    INSERT INTO "home budget application".wallets (
+        wallet_name, currency_id
+    ) VALUES (
+        p_wallet_name, v_currency_id
+    ) RETURNING * INTO v_wallet;
+
+    -- Link the wallet with the user
+    INSERT INTO "home budget application".users_wallets (
+        wallet_id, user_id
+    ) VALUES (
+        v_wallet.wallet_id, v_user_id
+    );
+
+    -- Return the wallet
+    RETURN v_wallet;
+END;
+$function$
+;
+]]></string>
+			<input_param name="p_session_hash" jt="-1" type="text" inOut="1" />
+			<input_param name="p_wallet_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
+		</function>
+		<function name="login_user" id="Function-17ab" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".login_user(p_email character varying, p_user_password character varying)
+ RETURNS text
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_user "home budget application".users%ROWTYPE;
@@ -532,7 +587,6 @@ BEGIN
     SELECT * INTO v_user
     FROM "home budget application".users
     WHERE email = p_email;
-
     -- Check if user exists and verify password
     IF v_user.user_id IS NULL THEN
         RAISE EXCEPTION 'User with email % does not exist', p_email;
@@ -541,25 +595,20 @@ BEGIN
         RAISE EXCEPTION 'Incorrect password for email %', p_email;
         RETURN NULL;
     END IF;
-
     -- Create a new session
     INSERT INTO "home budget application".sessions DEFAULT VALUES
     RETURNING * INTO v_session;
-
     -- Link the session with the user
     INSERT INTO "home budget application".users_sessions (
         session_id, user_id
     ) VALUES (
         v_session.session_id, v_user.user_id
     );
-
     -- Return the session hash
     RETURN v_session.hash;
 END;
 $function$
 ;]]></string>
-			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_user_password" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_user_password" jt="-1" type="character varying" inOut="1" />
 		</function>
