@@ -7,3 +7,5 @@ Dom
 ## Navigator
 
 - [Analiza wymagań](./ANALIZA_WYMAGAN.md)
+- [Struktura bazy danych (po angielsku)](../eng/BASE_STRUCTURE.md)
+- [Implementacja bazy danych](./IMPLEMENTACJA.md)
