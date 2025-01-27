@@ -5,11 +5,11 @@
 		<udt name="home" udt_java_type="12" udt_precision="NONE" >
 			<udt_script><![CDATA[CREATE TYPE ${name} budget application.user_role_in_group AS ENUM ('admin','guest');]]></udt_script>
 		</udt>
-		<udt name="user_role_in_group" udt_java_type="2002" udt_precision="NONE" >
-			<udt_script><![CDATA[CREATE TYPE ${name} AS ENUM ( 'guest', 'admin'  )]]></udt_script>
-		</udt>
 		<udt name="transaction_type" udt_java_type="2002" udt_precision="ENUMERATION" >
 			<udt_script><![CDATA[CREATE TYPE ${name} AS ENUM ( 'withdraw', 'deposit'  )]]></udt_script>
+		</udt>
+		<udt name="user_role_in_group" udt_java_type="2002" udt_precision="NONE" >
+			<udt_script><![CDATA[CREATE TYPE ${name} AS ENUM ( 'guest', 'admin'  )]]></udt_script>
 		</udt>
 		<table name="categories" prior="tbl" generator_rows="100" generator_order="2" >
 			<column name="category_id" prior="category_name" type="integer" length="32" jt="4" mandatory="y" >
@@ -120,7 +120,7 @@
 				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
 			</column>
 			<column name="value" type="numeric" length="10" decimal="2" jt="2" />
-			<column name="transaction_type" type="transaction_type" jt="2002" mandatory="y" regexp="(withdraw|deposit)" >
+			<column name="transaction_type" type="home" jt="12" mandatory="y" regexp="(withdraw|deposit)" >
 				<comment><![CDATA[Enum type  with two options: 'deposit' and 'withdraw']]></comment>
 			</column>
 			<column name="currency_id" type="integer" jt="4" mandatory="y" />
@@ -271,6 +271,22 @@
 				<fk_column name="currency_id" pk="currency_id" />
 			</fk>
 		</table>
+		<function name="update_group_update_time" id="Function-a2e" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".update_group_update_time()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    NEW.update_time = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$function$
+;]]></string>
+			<result_param jt="-1" />
+		</function>
+		<trigger name="group_update_time_trigger" table="groups" id="Trigger-58c" isSystem="false" >
+			<string><![CDATA[CREATE TRIGGER group_update_time_trigger BEFORE UPDATE ON "home budget application".groups FOR EACH ROW EXECUTE FUNCTION "home budget application".update_group_update_time()]]></string>
+		</trigger>
 	</schema>
 	<layout name="Default Layout" id="Layout-211" joined_routing="y" show_relation="columns" >
 		<comment><![CDATA[Default Layout]]></comment>
@@ -288,6 +304,21 @@
 		<entity schema="home budget application" name="users_wallets" color="CAEED2" x="64" y="336" />
 		<entity schema="home budget application" name="wallets" color="C1D8EE" x="48" y="432" />
 		<script name="SQL_Editor" id="Editor-7ac" language="SQL" >
+			<string><![CDATA[ROLLBACK;
+-- Test group_update_time_trigger-- Insert a group
+BEGIN;
+INSERT INTO "home budget application".groups (group_name, group_description, creation_time, update_time, owner_id)
+VALUES ('Test Group', 'Description', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
+
+SELECT update_time FROM "home budget application".groups WHERE owner_id=1 AND group_name='Test Group';
+
+UPDATE "home budget application".groups SET group_description='NEW Description' WHERE owner_id=1 AND group_name='Test Group';
+
+SELECT update_time, group_description FROM "home budget application".groups WHERE owner_id=1 AND group_name='Test Group';
+
+COMMIT;]]></string>
+		</script>
+		<script name="SQL_Editor_001" id="Editor-2459" language="SQL" >
 			<string><![CDATA[SELECT * FROM "home budget application".groups;]]></string>
 		</script>
 	</layout>
