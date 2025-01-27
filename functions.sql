@@ -45,3 +45,39 @@ BEGIN
     RETURN v_currency;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Function to add a new country and return the whole row
+CREATE OR REPLACE FUNCTION "home budget application".add_country(
+    p_country_name character varying,
+    p_country_code character,
+    p_currency_short character
+)
+RETURNS "home budget application".countries
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_country "home budget application".countries%ROWTYPE;
+    v_currency_id INTEGER;
+BEGIN
+    -- Check if the currency exists
+    SELECT currency_id INTO v_currency_id
+    FROM "home budget application".currency
+    WHERE currency_short = p_currency_short;
+
+    -- If the currency ID is null, raise an exception and do not insert the country
+    IF v_currency_id IS NULL THEN
+        RAISE EXCEPTION 'Currency with short code % does not exist', p_currency_short;
+        RETURN NULL;
+    END IF;
+
+    -- Insert the country if the currency exists
+    INSERT INTO "home budget application".countries (
+        country_name, country_code, currency_id
+    ) VALUES (
+        p_country_name, p_country_code, v_currency_id
+    ) RETURNING * INTO v_country;
+    
+    RETURN v_country;
+END;
+$function$
+;

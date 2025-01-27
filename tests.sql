@@ -42,3 +42,10 @@ COMMIT;
 BEGIN;
 SELECT * FROM "home budget application".add_currency('Zloty', 'PLN', 0.2493);
 COMMIT;
+
+-- Test add_country function
+BEGIN;
+SELECT * FROM "home budget application".add_country(
+    'Poland', 'PL', 'PLN'
+);
+COMMIT;

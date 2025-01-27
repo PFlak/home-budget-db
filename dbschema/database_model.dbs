@@ -34,6 +34,9 @@
 			<index name="pk_countries" unique="PRIMARY_KEY" >
 				<column name="country_id" />
 			</index>
+			<index name="countries_country_code_key" unique="UNIQUE_KEY" >
+				<column name="country_code" />
+			</index>
 			<fk name="fk_countries_currency" to_schema="home budget application" to_table="currency" update_action="cascade" >
 				<fk_column name="currency_id" pk="currency_id" />
 			</fk>
@@ -52,6 +55,9 @@
 			</column>
 			<index name="pk_currency" unique="PRIMARY_KEY" >
 				<column name="currency_id" />
+			</index>
+			<index name="currency_currency_short_key" unique="UNIQUE_KEY" >
+				<column name="currency_short" />
 			</index>
 		</table>
 		<table name="groups" prior="tbl" generator_rows="0" generator_order="10" >
@@ -273,25 +279,79 @@
 				<fk_column name="currency_id" pk="currency_id" />
 			</fk>
 		</table>
-		<function name="add_country" id="Function-1a42" isSystem="false" params_known="n" >
-			<string><![CDATA[CREATE [ OR REPLACE ] FUNCTION <name> ( [ [ argmode ] [ argname ] argtype [ { DEFAULT | = } default_expr ] [, ...] ] ) 
- [ RETURNS rettype 
- | RETURNS TABLE ( column_name column_type [, ...] ) ] 
- { LANGUAGE lang_name 
- | TRANSFORM { FOR TYPE type_name } [, ... ] 
- | WINDOW 
- | IMMUTABLE | STABLE | VOLATILE | [ NOT ] LEAKPROOF 
- | CALLED ON NULL INPUT | RETURNS NULL ON NULL INPUT | STRICT 
- | [ EXTERNAL ] SECURITY INVOKER | [ EXTERNAL ] SECURITY DEFINER 
- | COST execution_cost 
- | ROWS result_rows 
- | SET configuration_parameter { TO value | = value | FROM CURRENT } 
- | AS 'definition' 
- | AS 'obj_file', 'link_symbol' 
- } ... 
- [ WITH ( attribute [, ...] ) ]]]></string>
+		<function name="add_country" id="Function-b96" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".add_country(p_country_name character varying, p_country_code character, p_currency_short character)
+ RETURNS "home budget application".countries
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_country "home budget application".countries%ROWTYPE;
+    v_currency_id INTEGER;
+BEGIN
+    -- Check if the currency exists
+    SELECT currency_id INTO v_currency_id
+    FROM "home budget application".currency
+    WHERE currency_short = p_currency_short;
+    -- If the currency ID is null, raise an exception and do not insert the country
+    IF v_currency_id IS NULL THEN
+        RAISE EXCEPTION 'Currency with short code % does not exist', p_currency_short;
+        RETURN NULL;
+    END IF;
+    -- Insert the country if the currency exists
+    INSERT INTO "home budget application".countries (
+        country_name, country_code, currency_id
+    ) VALUES (
+        p_country_name, p_country_code, v_currency_id
+    ) RETURNING * INTO v_country;
+    
+    RETURN v_country;
+END;
+$function$
+;]]></string>
+			<input_param name="p_country_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_country_code" jt="-1" type="character" inOut="1" />
+			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
 		</function>
-		<function name="add_currency" id="Function-7f0" isSystem="false" params_known="y" >
+		<function name="add_country" id="Function-1a42" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".add_country(
+    p_country_name character varying,
+    p_country_code character,
+    p_currency_short character
+)
+RETURNS "home budget application".countries
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_country "home budget application".countries%ROWTYPE;
+    v_currency_id INTEGER;
+BEGIN
+    -- Check if the currency exists
+    SELECT currency_id INTO v_currency_id
+    FROM "home budget application".currency
+    WHERE currency_short = p_currency_short;
+
+    -- If the currency ID is null, raise an exception and do not insert the country
+    IF v_currency_id IS NULL THEN
+        RAISE EXCEPTION 'Currency with short code % does not exist', p_currency_short;
+        RETURN NULL;
+    END IF;
+
+    -- Insert the country if the currency exists
+    INSERT INTO "home budget application".countries (
+        country_name, country_code, currency_id
+    ) VALUES (
+        p_country_name, p_country_code, v_currency_id
+    ) RETURNING * INTO v_country;
+    
+    RETURN v_country;
+END;
+$function$
+;]]></string>
+			<input_param name="p_country_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_country_code" jt="-1" type="character" inOut="1" />
+			<input_param name="p_currency_short" jt="-1" type="numeric" inOut="1" />
+		</function>
+		<function name="add_currency" id="Function-1d8b" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".add_currency(p_currency_name character varying, p_currency_short character, p_dollar_rate numeric)
  RETURNS "home budget application".currency
  LANGUAGE plpgsql
@@ -299,7 +359,6 @@ AS $function$
 DECLARE
     v_currency "home budget application".currency%ROWTYPE;
 BEGIN
-
     INSERT INTO "home budget application".currency (
         currency_name, currency_short, dollar_rate
     ) VALUES (
@@ -310,9 +369,6 @@ BEGIN
 END;
 $function$
 ;]]></string>
-			<input_param name="p_currency_name" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
-			<input_param name="p_dollar_rate" jt="-1" type="numeric" inOut="1" />
 			<input_param name="p_currency_name" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
 			<input_param name="p_dollar_rate" jt="-1" type="numeric" inOut="1" />
@@ -386,8 +442,8 @@ COMMIT;]]></string>
 		</script>
 		<script name="SQL_Editor_002" id="Editor-268b" language="SQL" >
 			<string><![CDATA[BEGIN;
-SELECT * FROM "home budget application".add_currency(
-    'Dollar', 'USD', 1
+SELECT * FROM "home budget application".add_country(
+    'Poland', 'PL', 'PLN'
 );
 COMMIT;
 ]]></string>
