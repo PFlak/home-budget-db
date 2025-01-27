@@ -422,7 +422,7 @@ $function$
 			<input_param name="p_currency_short" jt="-1" type="character" inOut="1" />
 			<input_param name="p_dollar_rate" jt="-1" type="numeric" inOut="1" />
 		</function>
-		<function name="add_subcategory" id="Function-2431" isSystem="false" params_known="y" >
+		<function name="add_subcategory" id="Function-c32" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".add_subcategory(p_subcategory_name character varying, p_subcategory_description character varying, p_category_name character varying)
  RETURNS "home budget application".subcategories
  LANGUAGE plpgsql
@@ -451,9 +451,6 @@ BEGIN
 END;
 $function$
 ;]]></string>
-			<input_param name="p_subcategory_name" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_subcategory_description" jt="-1" type="character varying" inOut="1" />
-			<input_param name="p_category_name" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_subcategory_name" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_subcategory_description" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_category_name" jt="-1" type="character varying" inOut="1" />
@@ -530,6 +527,58 @@ $function$]]></string>
 			<input_param name="p_surname" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_nick_name" jt="-1" type="character varying" inOut="1" />
 			<input_param name="p_phone_number" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_user_password" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_country_short" jt="-1" type="character" inOut="1" />
+			<input_param name="p_surname" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_nick_name" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_phone_number" jt="-1" type="character varying" inOut="1" />
+		</function>
+		<function name="login_user" id="Function-25ee" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".login_user(
+    p_email VARCHAR,
+    p_user_password VARCHAR
+)
+RETURNS TEXT 
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user "home budget application".users%ROWTYPE;
+    v_session "home budget application".sessions%ROWTYPE;
+BEGIN
+    -- Retrieve user by email
+    SELECT * INTO v_user
+    FROM "home budget application".users
+    WHERE email = p_email;
+
+    -- Check if user exists and verify password
+    IF v_user.user_id IS NULL THEN
+        RAISE EXCEPTION 'User with email % does not exist', p_email;
+        RETURN NULL;
+    ELSIF v_user.user_password != md5(p_user_password || v_user.salt) THEN
+        RAISE EXCEPTION 'Incorrect password for email %', p_email;
+        RETURN NULL;
+    END IF;
+
+    -- Create a new session
+    INSERT INTO "home budget application".sessions DEFAULT VALUES
+    RETURNING * INTO v_session;
+
+    -- Link the session with the user
+    INSERT INTO "home budget application".users_sessions (
+        session_id, user_id
+    ) VALUES (
+        v_session.session_id, v_user.user_id
+    );
+
+    -- Return the session hash
+    RETURN v_session.hash;
+END;
+$function$
+;]]></string>
+			<input_param name="p_email" jt="-1" type="character varying" inOut="1" />
+			<input_param name="p_user_password" jt="-1" type="character varying" inOut="1" />
 		</function>
 		<function name="update_group_update_time" id="Function-a2e" isSystem="false" params_known="y" >
 			<string><![CDATA[CREATE OR REPLACE FUNCTION "home budget application".update_group_update_time()

@@ -79,3 +79,9 @@ SELECT * FROM "home budget application".login_user('tester@domain.com', 'passwor
 SELECT * FROM "home budget application".login_user('tester2@domain.com', 'password');
 -- Error
 
+
+-- Test verify_session function
+SELECT * FROM "home budget application".verify_session('da37d8301bc2dd827949e0701a69824e');
+-- Success
+SELECT * FROM "home budget application".verify_session('da37d8301bc2dd827949e0701a698');
+-- Error

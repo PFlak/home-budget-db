@@ -206,3 +206,80 @@ BEGIN
     RETURN v_user;
 END;
 $function$
+
+-- Function to login user and return hash unique to session
+CREATE OR REPLACE FUNCTION "home budget application".login_user(
+    p_email VARCHAR,
+    p_user_password VARCHAR
+)
+RETURNS TEXT 
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_user "home budget application".users%ROWTYPE;
+    v_session "home budget application".sessions%ROWTYPE;
+BEGIN
+    -- Retrieve user by email
+    SELECT * INTO v_user
+    FROM "home budget application".users
+    WHERE email = p_email;
+
+    -- Check if user exists and verify password
+    IF v_user.user_id IS NULL THEN
+        RAISE EXCEPTION 'User with email % does not exist', p_email;
+        RETURN NULL;
+    ELSIF v_user.user_password != md5(p_user_password || v_user.salt) THEN
+        RAISE EXCEPTION 'Incorrect password for email %', p_email;
+        RETURN NULL;
+    END IF;
+
+    -- Create a new session
+    INSERT INTO "home budget application".sessions DEFAULT VALUES
+    RETURNING * INTO v_session;
+
+    -- Link the session with the user
+    INSERT INTO "home budget application".users_sessions (
+        session_id, user_id
+    ) VALUES (
+        v_session.session_id, v_user.user_id
+    );
+
+    -- Return the session hash
+    RETURN v_session.hash;
+END;
+$function$
+;
+
+-- Function to verify session, returns user_id if session is valid
+CREATE OR REPLACE FUNCTION "home budget application".verify_session(
+    p_session_hash TEXT
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_session "home budget application".sessions%ROWTYPE;
+    v_user_id INTEGER;
+BEGIN
+    -- Retrieve session by session hash
+    SELECT * INTO v_session
+    FROM "home budget application".sessions
+    WHERE hash = p_session_hash;
+
+    -- Check if session exists and is still valid
+    IF v_session.session_id IS NULL THEN
+        RETURN NULL;
+    ELSIF v_session.expiration_time < CURRENT_TIMESTAMP THEN
+        RETURN NULL;
+    ELSE
+        -- Retrieve user_id from users_sessions
+        SELECT user_id INTO v_user_id
+        FROM "home budget application".users_sessions
+        WHERE session_id = v_session.session_id;
+
+        RETURN v_user_id;
+    END IF;
+END;
+$function$
+;
+
